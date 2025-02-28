@@ -3,9 +3,9 @@ import { AuthService } from "../services/auth.service.js";
 export const AuthController = {
     // 📌 Đăng ký người dùng
     register: async (c: any) => {
-        const { username, email, password, otp_code } = await c.req.json();
+        const { username, email, password, otp_code, topic } = await c.req.json();
         // call service
-        const newUser = await AuthService.register(username, email, password, otp_code);
+        const newUser = await AuthService.register(username, email, password, otp_code, topic);
         return c.json({ status: 201, message: "Đăng ký thành công!", data: newUser }, 201);
     },
 

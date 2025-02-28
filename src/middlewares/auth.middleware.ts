@@ -1,8 +1,8 @@
-import { type MiddlewareHandler } from "hono"
+import { type Context, type MiddlewareHandler, type Next } from "hono"
 import { verifyToken } from "../utils/auth.util.js"
 
 // 📌 Middleware xác thực JWT
-export const authenticate: MiddlewareHandler = async (c, next) => {
+export const authenticate: MiddlewareHandler = async (c: Context, next: Next) => {
     const token = c.req.header("Authorization")?.split(" ")[1];
     if (!token) return c.json({ message: "Bạn chưa đăng nhập!" }, 401);
 
@@ -14,7 +14,7 @@ export const authenticate: MiddlewareHandler = async (c, next) => {
 };
 
 // 📌 Middleware kiểm tra quyền Admin
-export const authorizeAdmin: MiddlewareHandler = async (c, next) => {
+export const authorizeAdmin: MiddlewareHandler = async (c: Context, next: Next) => {
     const user = c.get("user");
     if (user.role !== "admin") {
         return c.json({ message: "Bạn không có quyền truy cập!" }, 403);

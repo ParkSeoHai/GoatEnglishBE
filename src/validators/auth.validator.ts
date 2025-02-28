@@ -18,7 +18,7 @@ export const registerSchema = z
 // 📌 Schema kiểm tra đầu vào đăng nhập
 export const loginSchema = z.object({
     username: z.string().min(2, "Username không được trống!"),
-    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+    password: z.string().min(2, "Password không được trống!"),
 });
 
 export const emailSchema = z.object({

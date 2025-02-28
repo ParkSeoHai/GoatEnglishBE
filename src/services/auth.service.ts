@@ -13,6 +13,11 @@ export const AuthService = {
         username: string, email: string, password: string,
         otpCode: string, topic_id?: string | null
     ) => {
+        // Kiểm tra username đã tồn tại
+        const existingUser = await UserModel.findOne({ username });
+        if (existingUser) {
+            throw new HTTPException(409, { message: `Username đã được sử dụng!` }); // 409: Conflict
+        }
         // Kiểm tra OTP trước khi đăng ký
         const isValid = await AuthService.verifyOTP(email, otpCode);
         if (!isValid) throw new HTTPException(400, { message: "Mã OTP không hợp lệ hoặc đã hết hạn!" });
@@ -40,7 +45,8 @@ export const AuthService = {
         const token = await generateToken({
             _id: user._id, role: user.role
         });
-        return { token, user };
+        // console.log(token);
+        return { token };
     },
 
     getOTP: async ({ emailTo }: { emailTo: string }) => {

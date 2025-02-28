@@ -1,25 +1,42 @@
-import { Schema, model } from "mongoose";
+import { Document, Schema, model } from "mongoose";
 
 const DOCUMENT_NAME = "user_progress";
 const COLLECTION_NAME = "user_progresses";
 
+export interface IUserProgress extends Document {
+  user_id: string;
+  topic_id: string;
+  lesson_id: string;
+  status: string,
+  score: number;
+  detail: [
+    {
+      exercise_id: string,
+      question: string,
+      correct_answer: string | string[],
+      user_answer: string | string[],
+      correct: boolean
+    }
+  ];
+}
+
 const userProgressSchema = new Schema({
   user_id: { type: Schema.Types.ObjectId, ref: "user", required: true },
   topic_id: { type: Schema.Types.ObjectId, ref: "topic", required: true },
-  lesson_id: { type: Schema.Types.ObjectId, ref: "lesson", required: true },
+  lesson_id: { type: Schema.Types.ObjectId, ref: "lesson", default: null },
   status: { type: String, enum: ["in_progress", "completed"], default: "in_progress" },
   score: { type: Number, default: 0 },
   detail: [{
-    exercise_id: { type: Schema.Types.ObjectId, ref: "exercise", required: true }, // Bài tập đã làm
-    user_answer: { type: Schema.Types.Mixed, required: true }, // Câu trả lời của user (String hoặc Array<String>)
-    correct: { type: Boolean, required: true }, // Đáp án đúng/sai
-    // time_spent: { type: Number, default: 0 } // Thời gian làm bài (tính bằng giây)
+    exercise_id: { type: String }, // Bài tập đã làm
+    correct_answer: { type: Schema.Types.Mixed },
+    user_answer: { type: Schema.Types.Mixed }, // Câu trả lời của user (String hoặc Array<String>)
+    correct: { type: Boolean }, // Đáp án đúng/sai
   }]
 }, {
   collection: COLLECTION_NAME,
   timestamps: true
 });
 
-const UserProgressModel = model(DOCUMENT_NAME, userProgressSchema);
+const UserProgressModel = model<IUserProgress>(DOCUMENT_NAME, userProgressSchema);
 
 export default UserProgressModel;
