@@ -4,6 +4,9 @@ import nodemailer from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 import UserModel, { type IUser } from "../models/user.model.js";
 import { generateToken } from "../utils/auth.util.js";
+import { ProgressService } from "./progress.service.js";
+import { LessonService } from "./lesson.service.js";
+import { UserProgressService } from "./user_progress.service.js";
 
 const otpStore = new Map<string, { otp: string, expiresAt: number }>(); // Lưu OTP tạm thời
 
@@ -30,7 +33,26 @@ export const AuthService = {
             password_hash: hashedPassword,
             topic_id: topic_id || null
         });
-        return await newUser.save();
+        const savedUser: any = await newUser.save();
+        // Lưu user progress đầu tiên
+        if (topic_id) {
+            const firstProgress: any = await ProgressService.getFirstByTopic(topic_id);
+            // Lấy bài học đầu tiên của progress
+            const lessons = await LessonService.getByProgressId(firstProgress._id);
+            if (lessons) {
+                const lesson: any = lessons[0];
+                await UserProgressService.processDB({
+                    user_id: savedUser._id,
+                    progress_id: firstProgress._id,
+                    lesson_id: lesson._id,
+                    status: "in_progress",
+                    score: 0,
+                    detail: [],
+                    _id: undefined
+                })
+            }
+        }
+        return ;
     },
 
     // 📌 Đăng nhập

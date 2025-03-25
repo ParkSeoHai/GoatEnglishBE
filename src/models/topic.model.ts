@@ -7,12 +7,14 @@ export interface ITopic extends Document {
   name: string;
   description: string;
   image: string;
+  isDelete?: boolean;
 }
 
 const topicSchema = new Schema({
   name: { type: String, unique: true, required: true },
   description: { type: String, default: "" },
-  image: { type: String }
+  image: { type: String },
+  isDelete: { type: Boolean, default: false }
 }, {
   collection: COLLECTION_NAME,
   timestamps: true

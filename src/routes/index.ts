@@ -7,6 +7,7 @@ import lessonRouter from './lesson.route.js';
 import exerciseLevelRouter from './exercise_level.route.js';
 import exerciseTypeRouter from './exercise_type.route.js';
 import exerciseRouter from './exercise.route.js';
+import vocabularyRouter from './vocabulary.route.js';
 
 const app = new Hono();
 
@@ -26,5 +27,7 @@ app.route('/exercise', exerciseRouter);
 app.route('/exercise-level', exerciseLevelRouter);
 // exercise type
 app.route('/exercise-type', exerciseTypeRouter);
+// vocabulary
+app.route('/vocabulary', vocabularyRouter);
 
 export default app

@@ -1,25 +1,50 @@
 import { HTTPException } from "hono/http-exception";
 import TopicModel, { type ITopic } from "../models/topic.model.js";
 import { getInfoData } from "../utils/index.js";
+import { uploadFileImg } from "../utils/upload.ultil.js";
+import isBase64 from "is-base64";
 
 export const TopicService = {
     // 📌 Tạo mới chủ đề
-    create: async (name: string, description: string, image?: string) => {
-        const newTopic: ITopic = new TopicModel({
-            name, description, image
-        });
-        return await newTopic.save();
+    createOrUpdate: async (_id: string | null, name: string, description: string, image?: string) => {
+        let imageUrl = image;
+        // Nếu là base64 mới upload
+        if (image && isBase64(image,  { allowMime: true })) {
+            // upload image to cloudinary
+            const res = await uploadFileImg(image, "goat-topic");
+            imageUrl = res.url;
+        }
+        // Cập nhật hoặc tạo mới nếu `_id` không tồn tại
+        let updatedTopic = null;
+        if (!_id) {
+            updatedTopic = await TopicModel.create({
+                name,
+                description,
+                image: imageUrl
+            });
+        } else {
+            updatedTopic = await TopicModel.findOneAndUpdate(
+                { _id }, 
+                { name, description, image: imageUrl }, 
+                { upsert: true, new: true } 
+            );
+        }
+        return updatedTopic;
     },
-
     // 📌 Get user by id
     getById: async (topic_id: string) => {
-        const topic = await TopicModel.findById(topic_id).lean();
+        const topic = await TopicModel.findOne({ _id: topic_id, isDelete: false }).lean();
         if (!topic) throw new HTTPException(404, { message: "Topic not found" });
         return getInfoData({ fields: ["_id", "name", "description", "image"], data: topic });
     },
-
     getAll: async () => {
-        const topics = await TopicModel.find();
+        const topics = await TopicModel.find({ isDelete: false });
         return topics;
+    },
+    deleteById: async (topic_id: string) => {
+        const topic = await TopicModel.findOne({ _id: topic_id, isDelete: false });
+        if (!topic) throw new HTTPException(404, { message: "Chủ đề không tồn tại" });
+        topic.isDelete = true;
+        return await topic.save();
     }
 };

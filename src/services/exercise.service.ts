@@ -4,46 +4,47 @@ import type { IExercise } from "../models/exercise.model.js";
 import ExerciseModel from "../models/exercise.model.js";
 import { ExerciseTypeService } from "./exercise_type.service.js";
 import { ExerciseLevelService } from "./exercise_level.service.js";
+import { Types } from "mongoose";
 
 export const ExerciseService = {
     // 📌 Tạo mới
-    create: async (
+    createOrUpdate: async (
         { 
-            type, level, question, options, multiple_correct, correct_answer, audio, answer, correct_text
+            _id, type, level, question, options, multiple_correct, correct_answer, audio, explain_answer, explain_answer_vn
         }:
         {
-            type: string, level: string, question: string,
+            _id: string, type: string, level: string, question: string,
             options?: string[], multiple_correct?: boolean,
             correct_answer?: string | string[], audio?: string,
-            answer?: string, correct_text?: string
+            explain_answer?: string, explain_answer_vn?: string
         }
     ) => {
-        // Tạo mới Exercise
-        const newExercise: IExercise = new ExerciseModel({
-            type, level, question, options, multiple_correct,
-            correct_answer, audio, answer, correct_text
-        });
-        // Lưu vào database
-        const savedExercise = await newExercise.save();
-        return savedExercise;
+        // xử lý _id có thể là "0", "1",... nếu tạo mới, hoặc là id của bài tập nếu cập nhật
+        const isCreate = Types.ObjectId.isValid(_id) ? false : true;
+        const newId = isCreate ? undefined : _id;
+        // Kiểm tra xem bài tập đã tồn tại chưa
+        const exercise = await ExerciseModel.findById(newId);
+        // Nếu tồn tại thì cập nhật
+        if (exercise) {
+            return await ExerciseModel.findByIdAndUpdate(
+                newId,
+                { type, level, question, options, multiple_correct, correct_answer, audio, explain_answer, explain_answer_vn },
+                { new: true }
+            );
+        } else {
+            // Nếu không tồn tại thì tạo mới
+            const newExercise = new ExerciseModel(
+                { 
+                    type, level, question, options, multiple_correct, 
+                    correct_answer, audio, explain_answer, explain_answer_vn 
+                }
+            );
+            return await newExercise.save();
+        }
     },
-    // 📌 Get detail by id
-    getDetailById: async (exercise_id: string) => {
-        const exercise = await ExerciseModel.findById(exercise_id).lean();
+    getById: async (exercise_id: string) => {
+        const exercise = await ExerciseModel.findById(exercise_id).populate("type").populate("level").lean();
         if (!exercise) throw new HTTPException(404, { message: "Không tìm thấy bài tập" });
-        // get exercise type and exercise level
-        const type = await ExerciseTypeService.getById(exercise.type);
-        const level = await ExerciseLevelService.getById(exercise.level);
-        // Xử lý question: chuyển đổi "A _ is a collection" => [{ text: A }, { text: _ }]
-        const splitQuestion = exercise.question.split(" ");
-        const newQuestion = splitQuestion.map((item) => ({ text: item }));
-        const splitAnswer = exercise.answer?.split(" ");
-        const newAnswer = splitAnswer?.map((item) => ({ text: item }));
-        return {
-            question: newQuestion,
-            answer: newAnswer,
-            ...type, ...level,
-            ...getInfoData({ data: exercise, fields: ["_id", "options", "multiple_correct", "correct_answer", "correct_text", "audio"] })
-        };
+        return exercise;
     }
 };

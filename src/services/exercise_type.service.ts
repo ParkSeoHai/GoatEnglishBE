@@ -20,5 +20,9 @@ export const ExerciseTypeService = {
             type_ma_muc: data.ma_muc,
             type_ten_muc: data.ten_muc
         };
+    },
+    getAll: async () => {
+        const data = await ExerciseTypeModel.find().lean();
+        return data;
     }
 };

@@ -20,5 +20,9 @@ export const ExerciseLevelService = {
             level_ma_muc: data.ma_muc,
             level_ten_muc: data.ten_muc
         };
+    },
+    getAll: async () => {
+        const data = await ExerciseLevelModel.find().lean();
+        return data;
     }
 };

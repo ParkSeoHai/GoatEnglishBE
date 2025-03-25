@@ -8,11 +8,11 @@ export interface IExercise extends Document {
   level: string;
   question: string;
   options?: string[];
-  multiple_correct: boolean,
-  correct_answer?: string | string[],
-  audio?: string,
-  answer?: string,
-  correct_text: string
+  multiple_correct: boolean;
+  correct_answer?: string | string[];
+  audio?: string;
+  explain_answer?: string;
+  explain_answer_vn?: string;
 }
 
 const exerciseSchema = new Schema({
@@ -23,8 +23,8 @@ const exerciseSchema = new Schema({
   multiple_correct: { type: Boolean, default: false },    // Bài tập có nhiều đáp án đúng hay ko
   correct_answer: { type: Schema.Types.Mixed, required: true }, // String hoặc Array<String>
   audio: { type: String },        // Nếu là bài tập nghe
-  answer: { type: String },       // Nếu là bài tập điền vào chỗ trống
-  correct_text: { type: String }  // Đáp án đúng của bài tập
+  explain_answer: { type: String },  // Giải thích đáp án
+  explain_answer_vn: { type: String }  // Giải thích đáp án tiếng việt
 }, {
   collection: COLLECTION_NAME,
   timestamps: true
