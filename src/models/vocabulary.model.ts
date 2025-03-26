@@ -15,7 +15,7 @@ const COLLECTION_NAME = "vocabularies";
 // });
 
 const vocabularySchema = new Schema({
-  word: { type: String, required: true, trim: true, unique: true },
+  word: { type: String, required: true, trim: true },
   meaning: { type: String, required: true },
   phonetic: { type: String }, // Phiên âm
   vietnamese: { type: String }, // nghĩa tiếng việt

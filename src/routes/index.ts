@@ -29,5 +29,26 @@ app.route('/exercise-level', exerciseLevelRouter);
 app.route('/exercise-type', exerciseTypeRouter);
 // vocabulary
 app.route('/vocabulary', vocabularyRouter);
+// text to speech
+app.post("/text-to-speech", async (c) => {
+    const { text, lang } = await c.req.json()
+    if (!text) return c.json({ error: "Missing text input" }, 400)
+    // Tạo URL Google Translate TTS
+    const googleTTSUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang || "en"}&client=tw-ob&q=${encodeURIComponent(text)}`
+    // Gửi request với User-Agent giả mạo
+    const response = await fetch(googleTTSUrl, {
+        headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+    })
+    if (!response.ok) {
+        return c.json({ error: `Google TTS API error: ${response.status}` }, 500)
+    }
+    // Proxy dữ liệu về client
+    const audioBuffer = await response.arrayBuffer()
+    return new Response(audioBuffer, {
+        headers: { "Content-Type": "audio/mpeg" },
+    })
+});
 
-export default app
+export default app;
