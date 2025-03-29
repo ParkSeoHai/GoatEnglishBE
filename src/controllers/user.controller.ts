@@ -91,4 +91,10 @@ export const UserController = {
         const result = await UserService.deleteAccount(user.userId, password);
         return c.json({ message: "Xóa tài khoản thành công", data: result, status: 200 }, 200);
     },
+    // 📌 Check streak
+    checkStreak: async (c: Context) => {
+        const user = c.get("user");
+        const result = await UserService.checkStreak(user.userId);
+        return c.json({ ...result }, 200);
+    }
 };

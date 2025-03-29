@@ -33,5 +33,7 @@ app.post('/update-infor', authenticate, asyncHandler(UserController.updateInfor)
 app.post('/change-password', authenticate, asyncHandler(UserController.changePassword));
 // delete account
 app.post('/delete-account', authenticate, asyncHandler(UserController.deleteAccount));
+// check streak
+app.post('/check-streak', authenticate, asyncHandler(UserController.checkStreak));
 
 export default app;

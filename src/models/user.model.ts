@@ -11,6 +11,9 @@ export interface IUser extends Document {
   role: "user" | "admin";
   topic_id: Types.ObjectId | null;
   is_delete?: Boolean;
+  streak?: number; // Số ngày streak liên tục
+  streak_max?: number; // Số ngày streak liên tục lớn nhất
+  streak_start?: Date | null; // Ngày bắt đầu streak
 }
 
 const userSchema = new Schema({
@@ -19,6 +22,9 @@ const userSchema = new Schema({
   password_hash: { type: String, required: false },
   role: { type: String, enum: ["user", "admin"], default: "user" },
   topic_id: { type: Schema.Types.ObjectId, ref: "topic", required: false },
+  streak: { type: Number, default: 0 }, // Số ngày streak liên tục
+  streak_max: { type: Number, default: 0 }, // Số ngày streak liên tục lớn nhất
+  streak_start: { type: Date, default: null }, // Ngày bắt đầu streak
   is_delete: { type: Boolean, default: false }
 }, {
   collection: COLLECTION_NAME,

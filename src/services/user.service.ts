@@ -58,7 +58,7 @@ export const UserService = {
             score = _.sumBy(userProgresses, "score");
         }
         return {
-            user: getInfoData({ fields: ["_id", "username", "email", "topic_id"], data: user }),
+            user: getInfoData({ fields: ["_id", "username", "email", "topic_id", "streak", "streak_max", "streak_start"], data: user }),
             topic, score
         };
     },
@@ -114,6 +114,27 @@ export const UserService = {
     ) => {
         const userProgress: any = await UserProgressModel.findOne({ user_id, lesson_id, topic_id, progress_id });
         if (!userProgress) throw new HTTPException(404, { message: "Không tìm thấy bài học" });
+        // update streak nếu hoàn thành bài học đầu tiên trong ngày
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const checkTodayProgress = await UserProgressModel.findOne({
+            user_id,
+            status: "completed",
+            createdAt: { $gte: today } // Chỉ lấy các bài học từ 00:00 hôm nay trở đi
+        });
+        if (!checkTodayProgress) {
+            // Tăng streak + cập nhật ngày bắt đầu streak
+            await UserModel.findByIdAndUpdate(user_id, {
+                $inc: { streak: 1 },
+                $set: { streak_start: new Date() }
+            });
+            // Lấy lại user sau khi update
+            const updatedUser: any = await UserModel.findById(user_id);
+            if (updatedUser.streak > (updatedUser.streak_max || 0)) {
+                updatedUser.streak_max = updatedUser.streak;
+                await updatedUser.save();
+            }
+        }
         // update
         const result = await UserProgressService.processDB({
             user_id, lesson_id, topic_id, progress_id, status, score, detail, _id: userProgress?._id?.toString()
@@ -235,5 +256,62 @@ export const UserService = {
         // xóa tài khoản
         user.is_delete = true;
         return await user.save();
+    },
+    checkStreak: async (user_id: string) => {
+        // Lấy thông tin người dùng
+        const user: any = await UserModel.findById(user_id).lean();
+        if (!user) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
+        if (!user.streak_start) {
+            // Nếu không có ngày bắt đầu streak, trả về thông báo
+            return {
+                status: 200,
+                message: "Chưa có streak nào",
+                streak: 0,
+                reset_streak: false
+            };
+        }
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // Kiểm tra xem người dùng có học vào ngày hôm nay không
+        const checkTodayProgress = await UserProgressModel.findOne({
+            user_id: user._id,
+            status: "completed",
+            createdAt: { $gte: today } // Chỉ xét bài học trong ngày hôm nay
+        });
+        if (checkTodayProgress) {
+            // Nếu có bài học nào vào ngày hôm nay, trả về thông báo
+            return {
+                status: 200,
+                message: "Người dùng đã học bài hôm nay",
+                streak: user.streak,
+                reset_streak: false
+            };
+        }
+        // Kiểm tra xem người dùng có học vào ngày hôm qua không
+        const checkYesterdayProgress = await UserProgressModel.findOne({
+            user_id: user._id,
+            status: "completed",
+            createdAt: { $gte: yesterday, $lt: today } // Chỉ xét bài học trong ngày hôm qua
+        });
+        if (!checkYesterdayProgress) {
+            // Nếu không có bài học nào vào ngày hôm qua, reset streak về 0
+            const result = await UserModel.findByIdAndUpdate(user_id, { $set: { streak: 0 } });
+            return {
+                status: 200,
+                message: "Không có bài học nào vào ngày hôm qua, streak đã được reset về 0",
+                streak: 0,
+                result,
+                reset_streak: true
+            };
+        }
+        return {
+            status: 200,
+            message: "Kiểm tra streak thành công",
+            streak: user.streak,
+            reset_streak: false
+        }
     }
 };
