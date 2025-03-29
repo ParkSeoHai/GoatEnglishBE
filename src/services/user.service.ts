@@ -10,6 +10,10 @@ import _ from "lodash";
 import { UserTopicService } from "./user_topic.service.js";
 import UserProgressModel from "../models/user_progress.model.js";
 import { ExerciseService } from "./exercise.service.js";
+import { AuthService } from "./auth.service.js";
+import bcrypt from "bcryptjs";
+
+const otpStore = new Map<string, { otp: string, expiresAt: number }>(); // Lưu OTP tạm thời
 
 export const UserService = {
     // 📌 Tạo mới user
@@ -42,7 +46,7 @@ export const UserService = {
     },
     // 📌 Get info user
     getInfo: async (user_id: string) => {
-        const user = await UserModel.findById(user_id).lean();
+        const user = await UserModel.findOne({ _id: user_id, is_delete: false }).lean();
         if (!user) throw new HTTPException(404, { message: "User not found" });
         // get topic and score
         let score = 0;
@@ -144,7 +148,7 @@ export const UserService = {
     },
     deleteById: async (user_id: string) => {
         const user = await UserModel.findOne({ _id: user_id, is_delete: false });
-        if (!user) throw new HTTPException(404, { message: "Chủ đề không tồn tại" });
+        if (!user) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
         user.is_delete = true;
         return await user.save();
     },
@@ -165,5 +169,71 @@ export const UserService = {
             }
         }));
         return oldMistakes;
+    },
+    // 📌 update infor user
+    updateInfor: async (user_id: string, username: string, email: string, otpCode?: string) => {
+        // check email đã tồn tại chưa
+        const userEmail: any = await UserModel.findOne({ email, is_delete: false });
+        if (userEmail && userEmail?._id?.toString() !== user_id) {
+            throw new HTTPException(400, { message: "Email đã tồn tại" });
+        }
+        const userUsername: any = await UserModel.findOne({ username, is_delete: false });
+        if (userUsername && userUsername?._id?.toString() !== user_id) {
+            throw new HTTPException(400, { message: "Tên đăng nhập đã tồn tại" });
+        }
+        // check user tồn tại không
+        const userUpdate = await UserModel.findById(user_id);
+        if (!userUpdate) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
+        if (otpCode) {
+            // check otpCode có đúng không
+            const isValid = await AuthService.verifyOTP(email, otpCode, otpStore);
+            if (!isValid) throw new HTTPException(400, { message: "Mã OTP không hợp lệ hoặc đã hết hạn!" });
+            // update user
+            userUpdate.username = username;
+            userUpdate.email = email;
+            await userUpdate.save();
+            return {
+                status: 200,
+                message: "Cập nhật thông tin thành công",
+                data: getInfoData({ fields: ["_id", "username", "email"], data: userUpdate })
+            };
+        }
+        // send otp to email
+        otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // OTP 6 chữ số
+        const expiresAt = Date.now() + 5 * 60 * 1000; // Hết hạn sau 5 phút
+        otpStore.set(email, { otp: otpCode, expiresAt });
+        await AuthService.sendOTPMail({ emailTo: email, otpCode });
+        return {
+            status: 200,
+            message: "Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra email để xác nhận thay đổi.",
+            otpCode: true
+        };
+    },
+    // 📌 Change password
+    changePassword: async (user_id: string, oldPassword: string, newPassword: string) => {
+        // check user tồn tại không
+        const user: any = await UserModel.findById(user_id);
+        if (!user) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
+        // check password đúng không
+        const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+        if (!isMatch) throw new HTTPException(400, { message: "Mật khẩu cũ không đúng" });
+        // check mật khẩu mới có giống mật khẩu cũ không
+        if (oldPassword === newPassword) throw new HTTPException(400, { message: "Mật khẩu mới không được giống mật khẩu cũ" });
+        // update
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password_hash = hashedPassword;
+        await user.save();
+        return getInfoData({ fields: ["_id", "username", "email"], data: user });
+    },
+    // 📌 Delete account
+    deleteAccount: async (user_id: string, password: string) => {
+        const user = await UserModel.findById(user_id);
+        if (!user) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
+        // check password đúng không
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) throw new HTTPException(400, { message: "Mật khẩu không đúng" });
+        // xóa tài khoản
+        user.is_delete = true;
+        return await user.save();
     }
 };

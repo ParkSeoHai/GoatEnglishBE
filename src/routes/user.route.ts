@@ -27,5 +27,11 @@ app.get('/:user_id', authenticate, authorizeAdmin, asyncHandler(UserController.g
 app.delete('/:user_id', authenticate, authorizeAdmin, asyncHandler(UserController.deleteById));
 // Get old mistake
 app.get('/get-old-mistake/:user_id/:topic_id', authenticate, asyncHandler(UserController.getOldMistake));
+// update infor user
+app.post('/update-infor', authenticate, asyncHandler(UserController.updateInfor));
+// change-password
+app.post('/change-password', authenticate, asyncHandler(UserController.changePassword));
+// delete account
+app.post('/delete-account', authenticate, asyncHandler(UserController.deleteAccount));
 
 export default app;

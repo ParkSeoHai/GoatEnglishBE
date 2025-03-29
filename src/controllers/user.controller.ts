@@ -69,5 +69,26 @@ export const UserController = {
         const { user_id, topic_id } = c.req.param();
         const result = await UserService.getOldMistake(user_id, topic_id);
         return c.json({ message: "Lấy lỗi cũ thành công", data: result }, 200);
-    }
+    },
+    updateInfor: async (c: Context) => {
+        const { username, email, otpCode } = await c.req.json();
+        console.log("update infor", username, email, otpCode);
+        const user = c.get("user");
+        const result = await UserService.updateInfor(user.userId, username, email, otpCode);
+        return c.json(result, 200);
+    },
+    // 📌 Change password
+    changePassword: async (c: Context) => {
+        const { oldPassword, newPassword } = await c.req.json();
+        const user = c.get("user");
+        const result = await UserService.changePassword(user.userId, oldPassword, newPassword);
+        return c.json({ message: "Thay đổi mật khẩu thành công", data: result, status: 200 }, 200);
+    },
+    // 📌 Delete account
+    deleteAccount: async (c: Context) => {
+        const { password } = await c.req.json();
+        const user = c.get("user");
+        const result = await UserService.deleteAccount(user.userId, password);
+        return c.json({ message: "Xóa tài khoản thành công", data: result, status: 200 }, 200);
+    },
 };

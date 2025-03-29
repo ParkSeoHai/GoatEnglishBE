@@ -8,7 +8,7 @@ import { ProgressService } from "./progress.service.js";
 import { LessonService } from "./lesson.service.js";
 import { UserProgressService } from "./user_progress.service.js";
 
-const otpStore = new Map<string, { otp: string, expiresAt: number }>(); // Lưu OTP tạm thời
+let otpStore = new Map<string, { otp: string, expiresAt: number }>(); // Lưu OTP tạm thời
 
 export const AuthService = {
     // 📌 Đăng ký người dùng
@@ -17,7 +17,7 @@ export const AuthService = {
         otpCode: string, topic_id?: string | null
     ) => {
         // Kiểm tra username đã tồn tại
-        const existingUser = await UserModel.findOne({ username });
+        const existingUser = await UserModel.findOne({ username, is_delete: false });
         if (existingUser) {
             throw new HTTPException(409, { message: `Username đã được sử dụng!` }); // 409: Conflict
         }
@@ -42,14 +42,19 @@ export const AuthService = {
             if (lessons) {
                 const lesson: any = lessons[0];
                 await UserProgressService.processDB({
-                    user_id: savedUser._id,
-                    progress_id: firstProgress._id,
-                    lesson_id: lesson._id,
-                    status: "in_progress",
-                    score: 0,
-                    detail: [],
-                    _id: undefined
-                })
+                    user_id: savedUser._id.toString(), status: "in_progress", score: 0,
+                    lesson_id: lesson._id.toString(), progress_id: firstProgress._id.toString(), topic_id,
+                    _id: undefined, detail: [],
+                });
+                // await UserProgressService.processDB({
+                //     user_id: savedUser._id,
+                //     progress_id: firstProgress._id,
+                //     lesson_id: lesson._id,
+                //     status: "in_progress",
+                //     score: 0,
+                //     detail: [],
+                //     _id: undefined
+                // })
             }
         }
         return ;
@@ -58,7 +63,7 @@ export const AuthService = {
     // 📌 Đăng nhập
     login: async (username: string, password: string) => {
         // Kiểm tra người dùng có tồn tại không
-        const user = await UserModel.findOne({ username });
+        const user = await UserModel.findOne({ username, is_delete: false });
         if (!user) throw new Error("Username hoặc mật khẩu không đúng!");
         // Kiểm tra mật khẩu
         const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -73,7 +78,7 @@ export const AuthService = {
 
     getOTP: async ({ emailTo }: { emailTo: string }) => {
         // Kiểm tra email hoặc username đã tồn tại
-        const existingUser = await UserModel.findOne({ email: emailTo });
+        const existingUser = await UserModel.findOne({ email: emailTo, is_delete: false });
         if (existingUser) {
             // const field = existingUser.email === emailTo ? "Email" : "Username";
             throw new HTTPException(409, { message: `Email đã được sử dụng!` }); // 409: Conflict
@@ -85,7 +90,9 @@ export const AuthService = {
     },
 
     // 📌 Xác thực OTP
-    verifyOTP: async (email: string, otpCode: string) => {
+    verifyOTP: async (email: string, otpCode: string, otpStoreInput?: any) => {
+        console.log(otpStoreInput)
+        if (otpStoreInput) otpStore = otpStoreInput; // Nếu có otpStore truyền vào thì sử dụng
         const otpData = otpStore.get(email);
         if (!otpData) return false;
         if (otpData.expiresAt < Date.now()) {
