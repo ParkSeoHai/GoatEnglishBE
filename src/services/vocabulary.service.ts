@@ -57,7 +57,7 @@ export const VoCabularyService = {
         await vocabulary.save();
         return getInfoData({ data: vocabulary, fields: ["_id", "word", "meaning", "type", "phonetic", "topic_id", "examples", "audio", "vietnamese"] });
     },
-    getAllByTopic: async (topic_id: string, page: number, limit: number, search: string) => {
+    getAllByTopic: async (topic_id: string, page: number, limit: number, search: string, sort: string) => {
         const topic = await TopicService.getById(topic_id);
         const query: any = { topic_id, is_delete: false };
         if (search) {
@@ -66,8 +66,17 @@ export const VoCabularyService = {
                 { meaning: { $regex: search, $options: 'i' } },
             ];
         }
+        // sort input example: "createdAt:desc,word:asc"
+        let sortOptions: any = { createdAt: -1 };
+        if (sort) {
+            sortOptions = sort.split(',').reduce((acc: any, item: string) => {
+                const [key, value] = item.split(':');
+                acc[key] = value === 'desc' ? -1 : 1;
+                return acc;
+            }, {});
+        }
         const vocabularies = await VocabularyModel.find(query).skip((page - 1) * limit).limit(limit)
-            .populate("topic_id").lean();
+            .populate("topic_id").sort(sortOptions).lean();
         const totalRecords = await VocabularyModel.countDocuments(query);
         const totalPages = Math.ceil(totalRecords / limit);
         return {

@@ -8,6 +8,7 @@ import exerciseLevelRouter from './exercise_level.route.js';
 import exerciseTypeRouter from './exercise_type.route.js';
 import exerciseRouter from './exercise.route.js';
 import vocabularyRouter from './vocabulary.route.js';
+import adminRouter from './admin.route.js';
 
 const app = new Hono();
 
@@ -29,6 +30,8 @@ app.route('/exercise-level', exerciseLevelRouter);
 app.route('/exercise-type', exerciseTypeRouter);
 // vocabulary
 app.route('/vocabulary', vocabularyRouter);
+// admin
+app.route('/admin', adminRouter);
 // text to speech
 app.post("/text-to-speech", async (c) => {
     const { text, lang } = await c.req.json()

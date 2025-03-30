@@ -27,8 +27,8 @@ export const VocabularyController = {
     },
     getAllByTopic: async (c: Context, next: Next) => {
         const { topic_id } = c.req.param();
-        const { page, limit, search } = c.req.query();
-        const result = await VoCabularyService.getAllByTopic(topic_id, Number(page) || 1, Number(limit) || 10, search);
+        const { page, limit, search, sort } = c.req.query();
+        const result = await VoCabularyService.getAllByTopic(topic_id, Number(page) || 1, Number(limit) || 10, search, sort);
         return c.json({ message: "Lấy danh sách từ vựng theo chủ đề thành công", data: result }, 200);
     }
 };
