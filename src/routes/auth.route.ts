@@ -12,5 +12,11 @@ app.post("/register", validate(registerSchema), asyncHandler(AuthController.regi
 app.post("/login", validate(loginSchema), asyncHandler(AuthController.login));
 // 📌 Send OTP
 app.post("/send-otp", validate(emailSchema), asyncHandler(AuthController.sendOTP));
+// 📌 Send OTP forgot password
+app.post("/send-otp-forgot-password", validate(emailSchema), asyncHandler(AuthController.sendOTPForgotPassword));
+// 📌 Verify OTP forgot password
+app.post("/verify-otp-forgot-password", validate(emailSchema), asyncHandler(AuthController.verifyOTPForgotPassword));
+// reset password
+app.post("/reset-password", validate(emailSchema), asyncHandler(AuthController.resetPassword));
 
 export default app;

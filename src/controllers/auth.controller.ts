@@ -24,4 +24,25 @@ export const AuthController = {
         });
         return c.json({ status: 200, message: "Mã OTP đã được gửi!" }, 200);
     },
+
+    // 📌 Gửi OTP xác thực email quên mật khẩu
+    sendOTPForgotPassword: async (c: any) => {
+        const { email } = await c.req.json();
+        await AuthService.getOTPForgotPassword({
+            emailTo: email
+        });
+        return c.json({ status: 200, message: "Mã OTP đã được gửi!" }, 200);
+    },
+    verifyOTPForgotPassword: async (c: any) => {
+        const { email, otp } = await c.req.json();
+        const isValid = await AuthService.verifyOTPForgotPassword(email, otp);
+        if (!isValid) return c.json({ status: 400, message: "Mã OTP không hợp lệ hoặc đã hết hạn!" }, 400);
+        return c.json({ status: 200, message: "Mã OTP hợp lệ!" }, 200);
+    },
+    resetPassword: async (c: any) => {
+        const { email, password } = await c.req.json();
+        const isReset = await AuthService.resetPassword(email, password);
+        if (!isReset) return c.json({ status: 400, message: "Mật khẩu không hợp lệ!" }, 400);
+        return c.json({ status: 200, message: "Đặt lại mật khẩu thành công!" }, 200);
+    }
 };

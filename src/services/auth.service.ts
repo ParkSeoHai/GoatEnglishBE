@@ -204,5 +204,39 @@ export const AuthService = {
         let info = await transport.sendMail(mailOptions);
         if (!info.response) throw new HTTPException(401, { message: "Gửi email thất bại" });
         console.log(`✅ Email đã gửi thành công: ${info.messageId} - OTP: ${otpCode}`);
+    },
+    getOTPForgotPassword: async ({ emailTo }: { emailTo: string }) => {
+        // Kiểm tra email hoặc username đã tồn tại
+        const existingUser = await UserModel.findOne({ email: emailTo, is_delete: false });
+        if (!existingUser) {
+            throw new HTTPException(409, { message: `Email không tồn tại!` }); // 409: Conflict
+        }
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // OTP 6 chữ số
+        const expiresAt = Date.now() + 5 * 60 * 1000; // Hết hạn sau 5 phút
+        otpStore.set(emailTo, { otp: otpCode, expiresAt });
+        await AuthService.sendOTPMail({ emailTo, otpCode });
+    },
+    verifyOTPForgotPassword: async (email: string, otpCode: string) => {
+        const otpData = otpStore.get(email);
+        if (!otpData) return false;
+        if (otpData.expiresAt < Date.now()) {
+            otpStore.delete(email); // Xóa OTP hết hạn
+            return false;
+        }
+        if (otpData.otp !== otpCode) return false;
+        otpStore.delete(email); // Xóa OTP sau khi dùng
+        return true;
+    },
+    resetPassword: async (email: string, password: string) => {
+        // Kiểm tra email hoặc username đã tồn tại
+        const existingUser = await UserModel.findOne({ email, is_delete: false });
+        if (!existingUser) {
+            throw new HTTPException(409, { message: `Email không tồn tại!` }); // 409: Conflict
+        }
+        // Hash mật khẩu mới
+        const hashedPassword = await bcrypt.hash(password, 10);
+        // Cập nhật mật khẩu
+        await UserModel.updateOne({ email }, { password_hash: hashedPassword });
+        return true;
     }
 };
