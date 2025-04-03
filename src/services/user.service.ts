@@ -66,7 +66,9 @@ export const UserService = {
     changeTopic: async (user_id: string, topic_id: string, type: string) => {
         // check user
         const user = await UserModel.findById(user_id);
-        if (!user) throw new HTTPException(404, { message: "User not found" });
+        if (!user) throw new HTTPException(404, { message: "Người dùng không tồn tại" });
+        // check topic
+        const topic = await TopicService.getById(topic_id);
         // update topic
         user.topic_id = new Types.ObjectId(topic_id);
         await user.save();

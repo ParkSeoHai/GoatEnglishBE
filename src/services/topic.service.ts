@@ -17,6 +17,12 @@ export const TopicService = {
         // Cập nhật hoặc tạo mới nếu `_id` không tồn tại
         let updatedTopic = null;
         if (!_id) {
+            // Kiểm tra xem chủ đề đã tồn tại chưa
+            const existingTopic = await TopicModel.findOne({ name, isDelete: false });
+            if (existingTopic) {
+                throw new HTTPException(400, { message: "Chủ đề đã tồn tại" });
+            }
+            // Tạo mới chủ đề
             updatedTopic = await TopicModel.create({
                 name,
                 description,
@@ -30,11 +36,11 @@ export const TopicService = {
             );
         }
         return updatedTopic;
-    },
+    },  
     // 📌 Get user by id
     getById: async (topic_id: string) => {
         const topic = await TopicModel.findOne({ _id: topic_id, isDelete: false }).lean();
-        if (!topic) throw new HTTPException(404, { message: "Topic not found" });
+        if (!topic) throw new HTTPException(404, { message: "Chủ đề không tồn tại" });
         return getInfoData({ fields: ["_id", "name", "description", "image"], data: topic });
     },
     getAll: async () => {

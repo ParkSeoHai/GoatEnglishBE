@@ -21,6 +21,11 @@ export const AuthService = {
         if (existingUser) {
             throw new HTTPException(409, { message: `Username đã được sử dụng!` }); // 409: Conflict
         }
+        // Kiểm tra email đã tồn tại
+        const existingEmail = await UserModel.findOne({ email, is_delete: false });
+        if (existingEmail) {
+            throw new HTTPException(409, { message: `Email đã được sử dụng!` }); // 409: Conflict
+        }
         // Kiểm tra OTP trước khi đăng ký
         const isValid = await AuthService.verifyOTP(email, otpCode);
         if (!isValid) throw new HTTPException(400, { message: "Mã OTP không hợp lệ hoặc đã hết hạn!" });
@@ -57,7 +62,7 @@ export const AuthService = {
                 // })
             }
         }
-        return ;
+        return savedUser;
     },
 
     // 📌 Đăng nhập
