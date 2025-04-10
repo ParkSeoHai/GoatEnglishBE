@@ -22,7 +22,7 @@ export const LessonController = {
         const search = c.req.query("search") || "";
         // Gọi service để lấy dữ liệu
         const lessons = await LessonService.getAll(page, limit, search);
-        return c.json({ message: "Lấy danh sách progress thành công", data: lessons }, 200);
+        return c.json({ message: "Lấy danh sách bài học thành công", data: lessons }, 200);
     },
     // 📌 Xóa bài học
     deleteLesson: async (c: Context, next: Next) => {

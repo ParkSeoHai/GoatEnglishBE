@@ -58,7 +58,7 @@ export const UserService = {
             score = _.sumBy(userProgresses, "score");
         }
         return {
-            user: getInfoData({ fields: ["_id", "username", "email", "topic_id", "streak", "streak_max", "streak_start"], data: user }),
+            user: getInfoData({ fields: ["_id", "username", "email", "role", "topic_id", "streak", "streak_max", "streak_start"], data: user }),
             topic, score
         };
     },
