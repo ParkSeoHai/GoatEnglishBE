@@ -29,5 +29,12 @@ export const LessonController = {
         const { lesson_id } = c.req.param();
         const result = await LessonService.deleteLesson(lesson_id);
         return c.json({ message: "Xóa bài học thành công", data: result}, 200);
-    }
+    },
+    // import lesson
+    importLesson: async (c: Context, next: Next) => {
+        const body = await c.req.parseBody();
+        const file = body["file"];
+        const result = await LessonService.importLesson(file);
+        return c.json({ message: "Import bài học thành công", data: result }, 200);
+    },
 };

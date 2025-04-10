@@ -52,5 +52,10 @@ export const TopicService = {
         if (!topic) throw new HTTPException(404, { message: "Chủ đề không tồn tại" });
         topic.isDelete = true;
         return await topic.save();
+    },
+    getTopicIdByName: async (name: string) => {
+        const topic = await TopicModel.findOne({ name: { $regex: name, $options: 'i' }, isDelete: false });
+        if (!topic) throw new HTTPException(404, { message: "Chủ đề không tồn tại" }); 
+        return topic._id;
     }
 };

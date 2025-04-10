@@ -24,5 +24,10 @@ export const ExerciseTypeService = {
     getAll: async () => {
         const data = await ExerciseTypeModel.find().lean();
         return data;
+    },
+    getTypeIdByName: async (ten_muc: string) => {
+        const data = await ExerciseTypeModel.findOne({ ten_muc: { $regex: ten_muc, $options: 'i' } }).lean();
+        if (!data) throw new HTTPException(404, { message: "Không tìm thấy loại bài tập" });
+        return data._id; 
     }
 };

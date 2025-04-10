@@ -117,5 +117,10 @@ export const ProgressService = {
         const nextProgress = await ProgressModel.findOne({ topic_id, order: { $gt: progress.order }, is_delete: false }).sort({ order: 1 });
         if (!nextProgress) throw new HTTPException(404, { message: "Không tìm thấy lộ trình kế tiếp" });
         return nextProgress;
-    }
+    },
+    getProgressIdByNameAndTopic: async (name: string, topic_id?: string) => {
+        const progress = await ProgressModel.findOne({ name: { $regex: `^${name}$`, $options: 'i' }, topic_id, is_delete: false });
+        if (!progress) throw new HTTPException(404, { message: "Lộ trình không tồn tại" });
+        return progress._id;
+    },
 };

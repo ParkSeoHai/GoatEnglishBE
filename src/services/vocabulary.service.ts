@@ -90,5 +90,15 @@ export const VoCabularyService = {
                 totalRecords,
             },
         };
-    }
+    },
+    getVocabularyIdByName: async (name: string) => {
+        const vocabulary = await VocabularyModel.findOne({ word: { $regex: name, $options: 'i' }, is_delete: false });
+        if (!vocabulary) throw new HTTPException(404, { message: "Từ vựng không tồn tại" });
+        return vocabulary._id;
+    },
+    getVocabularyIdByNameAndTopic: async (name: string, topic_id: string) => {
+        const vocabulary = await VocabularyModel.findOne({ word: { $regex: `^${name}$`, $options: 'i' }, topic_id, is_delete: false });
+        if (!vocabulary) throw new HTTPException(404, { message: "Từ vựng không tồn tại" });
+        return vocabulary._id;
+    },
 };

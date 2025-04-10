@@ -6,6 +6,9 @@ import { VoCabularyService } from "./vocabulary.service.js";
 import { Types } from "mongoose";
 import { ProgressService } from "./progress.service.js";
 import { TopicService } from "./topic.service.js";
+import * as XLSX from "xlsx";
+import { ExerciseTypeService } from "./exercise_type.service.js";
+import { ExerciseLevelService } from "./exercise_level.service.js";
 
 export const LessonService = {
     // 📌 Tạo mới hoặc cập nhật bài học
@@ -16,7 +19,7 @@ export const LessonService = {
             multiple_correct: boolean, correct_answer: string, audio: string, explain_answer: string,
             explain_answer_vn: string
         }[],
-        vocabularies: string[], progress_id: string, status: string
+        vocabularies: string[], progress_id: string, status: string, min_score: number = 0
     ) => {
         // Kiểm tra trạng thái hợp lệ
         if (!["publish", "draft"].includes(status)) {
@@ -32,7 +35,7 @@ export const LessonService = {
         };
         const [newExercises] = await Promise.all([processExercises()]);
         // Kiểm tra xem bài học đã tồn tại chưa
-        const updateData = { title, description, order, exercises: newExercises, vocabularies, progress_id, status };
+        const updateData = { title, description, order, min_score, exercises: newExercises, vocabularies, progress_id, status };
         const lesson = await LessonModel.findByIdAndUpdate(_id || new Types.ObjectId(), updateData, { new: true, upsert: true });
         return lesson;
     },
@@ -73,12 +76,12 @@ export const LessonService = {
     getFirstByProgress: async (progress_id: string) => {
         const lesson = await LessonModel
             .findOne({ progress_id, is_delete: false })
-            .sort({ createdAt: 1 }).lean();
+            .sort({ order: 1 }).lean();
         return lesson;
     },
     // 📌 Get lesson by progress
     getByProgressId: async (progress_id: string) => {
-        const lessons = await LessonModel.find({ progress_id, is_delete: false }).sort({ createdAt: 1 }).lean();
+        const lessons = await LessonModel.find({ progress_id, is_delete: false }).sort({ order: 1 }).lean();
         return lessons;
     },
     // 📌 Get all lesson
@@ -115,5 +118,97 @@ export const LessonService = {
         const lesson = await LessonModel.findByIdAndUpdate(lesson_id, { is_delete: true }, { new: true });
         if (!lesson) throw new HTTPException(404, { message: "Không tìm thấy bài học" });
         return lesson;
+    },
+    // import lesson
+    importLesson: async (file: any) => {
+        if (!file || !(file instanceof File)) {
+            throw new HTTPException(400, { message: "Không tìm thấy file" });
+        }
+        // Read file once and cache workbook
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        // Validate worksheets exist
+        if (!workbook.SheetNames[0] || !workbook.SheetNames[1]) {
+            throw new HTTPException(400, { message: "File không đúng định dạng" });
+        }
+        // Parse worksheets in parallel
+        const [dataLessons, dataExercises] = await Promise.all([
+            XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+                header: ["stt", "title", "description", "order", "min_score", "topic", "progress", "vocabularies"],
+                defval: ""
+            }),
+            XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[1]], {
+                header: ["stt", "stt_lesson", "type", "level", "question", "options", "correct_answer", "audio", "explain_answer", "explain_answer_vn"],
+                defval: ""
+            })
+        ]);
+        // Group exercises by lesson for faster lookup
+        const exercisesByLesson: Record<string, any[]> = dataExercises.reduce((acc: Record<string, any[]>, exercise: any) => {
+            if (!acc[exercise.stt_lesson]) acc[exercise.stt_lesson] = [];
+            acc[exercise.stt_lesson].push(exercise);
+            return acc;
+        }, {});
+        const newLessons = await Promise.all(dataLessons.map(async (lesson: any) => {
+            const { stt, title, description, order, min_score, topic, progress, vocabularies } = lesson;
+            
+            if (!(stt && Number(stt) > 0 && title && description && topic && progress)) {
+                return null;
+            }
+            const topic_id: any = await TopicService.getTopicIdByName(topic);
+            const progress_id = await ProgressService.getProgressIdByNameAndTopic(progress, topic_id);
+            let vocabulary_ids = [];
+            if (vocabularies && vocabularies.length > 0) {
+                const words = vocabularies.split(/\r?\n/);
+                vocabulary_ids = await Promise.all(
+                    words.map((word: string) => VoCabularyService.getVocabularyIdByNameAndTopic(word, topic_id))
+                );
+            }
+            const exercises = exercisesByLesson[stt] || [];
+            const newExercises = await Promise.all(exercises.map(async (exercise: any) => {
+                const [type_id, level_id] = await Promise.all([
+                    ExerciseTypeService.getTypeIdByName(exercise.type),
+                    ExerciseLevelService.getLevelIdByName(exercise.level)
+                ]);
+                let options_array = [];
+                if (exercise.options && exercise.options.length > 0) {
+                    options_array = exercise.options.split(/\r?\n/).map((option: { split: (arg0: string) => { (): any; new(): any; map: { (arg0: (s: any) => any): [any, any]; new(): any; }; }; }) => {
+                        const [ma_dap_an, noi_dung] = option.split(".").map((s: string) => s.trim());
+                        return { ma_dap_an, noi_dung };
+                    });
+                }
+                return {
+                    _id: new Types.ObjectId().toString(),
+                    type: type_id.toString(),
+                    level: level_id.toString(),
+                    question: exercise.question.toString(),
+                    options: options_array,
+                    multiple_correct: false,
+                    correct_answer: exercise.correct_answer.toString(),
+                    audio: exercise.audio.toString(),
+                    explain_answer: exercise.explain_answer.toString(),
+                    explain_answer_vn: exercise.explain_answer_vn.toString()
+                };
+            }));
+            // if (!newExercises?.length) {
+            //     throw new Error(`Missing exercises or vocabularies for lesson ${stt}`);
+            // }
+            return await LessonService.createOrUpdate(
+                null,
+                title.trim(),
+                description.trim(),
+                Number(order),
+                newExercises,
+                vocabulary_ids,
+                String(progress_id),
+                "publish",
+                Number(min_score) || 0
+            );
+        }));
+        // Filter out null values from newLessons
+        const filteredLessons = newLessons.filter((lesson: any) => lesson !== null);
+        console.log(filteredLessons);
+        if (filteredLessons.length === 0) {
+            throw new HTTPException(400, { message: "Không có bài học nào được tạo" });
+        }
+        return newLessons;
     }
 };

@@ -24,5 +24,10 @@ export const ExerciseLevelService = {
     getAll: async () => {
         const data = await ExerciseLevelModel.find().lean();
         return data;
+    },
+    getLevelIdByName: async (ten_muc: string) => {
+        const data = await ExerciseLevelModel.findOne({ ten_muc: { $regex: ten_muc, $options: 'i' } }).lean();
+        if (!data) throw new HTTPException(404, { message: "Không tìm thấy cấp độ bài tập" });
+        return data._id; 
     }
 };

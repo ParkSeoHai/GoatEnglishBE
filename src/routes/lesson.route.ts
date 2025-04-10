@@ -16,6 +16,8 @@ app.post('/', authenticate, authorizeAdmin, asyncHandler(LessonController.create
 app.get('/:lesson_id', asyncHandler(LessonController.getDetail));
 // delete lesson
 app.delete('/:lesson_id', authenticate, authorizeAdmin, asyncHandler(LessonController.deleteLesson));
+// import lesson
+app.post('/import', asyncHandler(LessonController.importLesson));
 
 // test openai
 // API tạo bài tập

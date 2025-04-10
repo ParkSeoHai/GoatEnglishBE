@@ -13,6 +13,7 @@
     "@types/nodemailer": "^6.4.17",
     "bcryptjs": "^3.0.0",
     "cloudinary": "^2.5.1",
+    "convert-excel-to-json": "^1.7.0",
     "dotenv": "^16.4.7",
     "hono": "^4.7.1",
     "is-base64": "^1.1.0",
@@ -22,6 +23,7 @@
     "nodemailer": "^6.10.0",
     "openai": "^4.86.1",
     "ts-jest": "^29.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {
