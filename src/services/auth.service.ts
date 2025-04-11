@@ -78,7 +78,7 @@ export const AuthService = {
             _id: user._id, role: user.role
         });
         // console.log(token);
-        return { token };
+        return { token, role: user.role };
     },
 
     getOTP: async ({ emailTo }: { emailTo: string }) => {
