@@ -43,9 +43,23 @@ export const TopicService = {
         if (!topic) throw new HTTPException(404, { message: "Chủ đề không tồn tại" });
         return getInfoData({ fields: ["_id", "name", "description", "image"], data: topic });
     },
-    getAll: async () => {
-        const topics = await TopicModel.find({ isDelete: false });
-        return topics;
+    getAll: async (page: number, limit: number, search: string) => {
+        let query: any = { isDelete: false };
+        if (search) {
+            query.name = { $regex: search, $options: "i" };
+        }
+        const skip = (page - 1) * limit;
+        const topics = await TopicModel.find(query).skip(skip).limit(limit).lean();
+        const totalRecords = await TopicModel.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / limit);
+        return {
+            topics,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalRecords,
+            },
+        };
     },
     deleteById: async (topic_id: string) => {
         const topic = await TopicModel.findOne({ _id: topic_id, isDelete: false });

@@ -16,7 +16,7 @@ test("Testcase 1 - Email đã tồn tại", async () => {
 
 test("Testcase 2 - Tên đăng nhập đã tồn tại", async () => {
     await expect(
-        UserService.updateInfor("67dc4591b0f8d7827ce13807", "nguyenvanhai123", "anhhai28212003@gmail.com", null)
+        UserService.updateInfor("67dc4591b0f8d7827ce13807", "nguyenvanhai", "anhhai28212003@gmail.com", null)
     ).rejects.toThrow("Tên đăng nhập đã tồn tại");
 }, 30000);
 

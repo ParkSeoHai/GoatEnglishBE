@@ -11,8 +11,11 @@ export const UserController = {
     },
     // 📌 Get all user
     getAll: async (c: Context, next: Next) => {
-        const users = await UserService.getAll();
-        return c.json({ message: "Success", data: users }, 200);
+        const page = Number(c.req.query("page")) || 1;
+        const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search") || "";
+        const users = await UserService.getAll(page, limit, search);
+        return c.json({ message: "Lấy danh sách người dùng thành công", data: users }, 200);
     },
     // 📌 Get user by id
     getById: async (c: Context, next: Next) => {

@@ -34,9 +34,27 @@ export const UserService = {
         return updatedUser;
     },
     // 📌 Get all user
-    getAll: async () => {
-        const users = await UserModel.find({ is_delete: false }).lean();
-        return getInfoData({ fields: ["_id", "username", "email", "topic_id", "role"], data: users });
+    getAll: async (page = 1, limit = 10, search: string) => {
+        let query: any = { is_delete: false };
+        if (search) {
+            query.$or = [
+                { username: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+            ];
+        }
+        const skip = (page - 1) * limit;
+        const users = await UserModel.find(query).skip(skip).limit(limit).lean();
+        const totalRecords = await UserModel.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / limit);
+        return {
+            users: getInfoData({ fields: ["_id", "username", "email", "topic_id", "role"], data: users }),
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalRecords,
+            },
+        };
+        // return getInfoData({ fields: ["_id", "username", "email", "topic_id", "role"], data: users });
     },
     // 📌 Get user by id
     getById: async (user_id: string) => {

@@ -9,8 +9,11 @@ export const TopicController = {
         return c.json({ message: "Thực hiện thành công", data: result }, 200);
     },
     getAll: async (c: Context) => {
-        const topics = await TopicService.getAll();
-        return c.json({ message: "Success", data: topics }, 200);
+        const page = Number(c.req.query("page")) || 1;
+        const limit = Number(c.req.query("limit")) || 10;
+        const search = c.req.query("search") || "";
+        const topics = await TopicService.getAll(page, limit, search);
+        return c.json({ message: "Lấy danh sách chủ đề thành công", data: topics }, 200);
     },
     getById: async (c: Context) => {
         const { topic_id } = c.req.param();

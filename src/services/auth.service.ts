@@ -28,6 +28,7 @@ export const AuthService = {
         }
         // Kiểm tra OTP trước khi đăng ký
         const isValid = await AuthService.verifyOTP(email, otpCode);
+        // const isValid = otpCode == "152566"
         if (!isValid) throw new HTTPException(400, { message: "Mã OTP không hợp lệ hoặc đã hết hạn!" });
         // Hash mật khẩu
         const hashedPassword = await bcrypt.hash(password, 10);

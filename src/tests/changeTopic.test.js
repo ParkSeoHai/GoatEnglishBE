@@ -19,7 +19,7 @@ test("Testcase 1 - Người dùng không tồn tại", async () => {
 
 test("Testcase 2 - Chủ đề không tồn tại", async () => {
     await expect(
-        UserService.changeTopic("67e6cb0824fdbeab2b11b5ca", "67b2da41f25a3c424d4ed5f0", "start")
+        UserService.changeTopic("67ed437f1df2776dac635fdb", "62b2da41f25a3c424d4ed5f0", "start")
     ).rejects.toThrow("Chủ đề không tồn tại");
 }, 30000);
 
