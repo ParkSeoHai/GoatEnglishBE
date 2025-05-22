@@ -10,7 +10,6 @@ import exerciseTypeRouter from './exercise_type.route.js';
 import exerciseRouter from './exercise.route.js';
 import vocabularyRouter from './vocabulary.route.js';
 import adminRouter from './admin.route.js';
-import OpenAI from 'openai';
 
 const app = new Hono();
 
@@ -89,20 +88,29 @@ app.post("/translate", async (c) => {
     return c.json({ translations });
 });
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+let OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
+const OPENROUTER_API_MODEL = process.env.OPENROUTER_API_MODEL || 'google/gemma-3n-e4b-it:free';
 // chatbot
 app.get("/chatbot", async (c: Context) => {
     const { message } = c.req.query();
+    if (!message || typeof message !== 'string') {
+        return new Response("Missing or invalid `message` query parameter", { status: 400 });
+    }
     const stream = new ReadableStream({
-        async start(controller) {
+    async start(controller) {
+        try {
             await fetchOpenRouterStream(
                 message,
                 (chunk) => controller.enqueue(`data: ${chunk}\n\n`),
                 () => {
                     controller.enqueue(`data: [DONE]\n\n`);
-                    controller.close(); // đóng stream khi hoàn tất
+                    controller.close();
                 }
             );
+            } catch (err) {
+                controller.enqueue(`data: [ERROR] ${err || "Unknown error"}\n\n`);
+                controller.close();
+            }
         },
     });
     return new Response(stream, {
@@ -115,75 +123,79 @@ app.get("/chatbot", async (c: Context) => {
 });
 
 export async function fetchOpenRouterStream(
-  prompt: string,
-  onChunk: (chunk: string) => void,
-  onDone?: () => void,
-  retryCount = 3
+    prompt: string,
+    onChunk: (chunk: string) => void,
+    onDone?: () => void,
+    retryCount = 6,
+    apiKeys: string[] = [process.env.OPENROUTER_API_KEY!, process.env.OPENROUTER_API_KEY_TWO!, process.env.OPENROUTER_API_KEY_THREE!],
+    keyIndex = 0
 ) {
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemma-3n-e4b-it:free",
-        stream: true,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (response.status === 429 && retryCount > 0) {
-      console.warn("Rate limit exceeded. Retrying in 2s...");
-      await new Promise((res) => setTimeout(res, 2000));
-      return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1);
+    const currentKey = apiKeys[keyIndex];
+    if (!currentKey || currentKey.trim() === "") {
+        throw new Error("Không tìm thấy API key hợp lệ để gọi OpenRouter.");
     }
+    try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${currentKey}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: OPENROUTER_API_MODEL,
+            stream: true,
+            messages: [{ role: "user", content: prompt }],
+        }),
+        });
+        if (response.status === 429 && retryCount > 0 && keyIndex + 1 < apiKeys.length) {
+        console.warn(`Rate limit exceeded for key ${keyIndex}. Trying next key in 2s...`);
+        await new Promise((res) => setTimeout(res, 2000));
+        return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1, apiKeys, keyIndex + 1);
+        }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenRouter API error: ${errorText}`);
-    }
+        if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error: ${errorText}`);
+        }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
 
-    while (true) {
-        const { value, done } = await reader!.read();
-        if (done) break;
+        while (true) {
+            const { value, done } = await reader!.read();
+            if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value, { stream: true });
 
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // giữ lại phần chưa hoàn chỉnh
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // giữ lại phần chưa hoàn chỉnh
 
-        for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
+            for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
 
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") {
-                onDone?.();
-                return;
-            }
-            try {
-                const parsed = JSON.parse(jsonStr);
-                const content = parsed?.choices?.[0]?.delta?.content;
-                if (content) {
-                    onChunk(content);
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === "[DONE]") {
+                    onDone?.();
+                    return;
                 }
-            } catch (err) {
-                // Bỏ qua nếu dòng không parse được (vì chưa đầy đủ)
-                console.warn("Bỏ qua dòng JSON chưa hợp lệ:", jsonStr);
+                try {
+                    const parsed = JSON.parse(jsonStr);
+                    const content = parsed?.choices?.[0]?.delta?.content;
+                    if (content) {
+                        onChunk(content);
+                    }
+                } catch (err) {
+                    // Bỏ qua nếu dòng không parse được (vì chưa đầy đủ)
+                    console.warn("Bỏ qua dòng JSON chưa hợp lệ:", jsonStr);
+                }
             }
         }
+
+    } catch (error) {
+        console.error("Lỗi khi stream OpenRouter:", error);
+        throw error;
     }
-
-  } catch (error) {
-    console.error("Lỗi khi stream OpenRouter:", error);
-    throw error;
-  }
 }
-
 
 export default app;
