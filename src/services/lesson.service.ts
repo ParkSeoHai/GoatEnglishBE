@@ -163,10 +163,11 @@ export const LessonService = {
                 );
             }
             const exercises = exercisesByLesson[stt] || [];
+            console.log("exercise.type", stt);
             const newExercises = await Promise.all(exercises.map(async (exercise: any) => {
                 const [type_id, level_id] = await Promise.all([
-                    ExerciseTypeService.getTypeIdByName(exercise.type),
-                    ExerciseLevelService.getLevelIdByName(exercise.level)
+                    ExerciseTypeService.getTypeIdByName(exercise.type?.trim()),
+                    ExerciseLevelService.getLevelIdByName(exercise.level?.trim())
                 ]);
                 let options_array = [];
                 if (exercise.options && exercise.options.length > 0) {
