@@ -136,26 +136,27 @@ export async function fetchOpenRouterStream(
     }
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${currentKey}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model: OPENROUTER_API_MODEL,
-            stream: true,
-            messages: [{ role: "user", content: prompt }],
-        }),
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${currentKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_API_MODEL,
+                stream: true,
+                messages: [{ role: "user", content: prompt }],
+            }),
         });
         if (response.status === 429 && retryCount > 0 && keyIndex + 1 < apiKeys.length) {
-        console.warn(`Rate limit exceeded for key ${keyIndex}. Trying next key in 2s...`);
-        await new Promise((res) => setTimeout(res, 2000));
-        return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1, apiKeys, keyIndex + 1);
+            console.warn(`Rate limit exceeded for key ${keyIndex}. Trying next key in 2s...`);
+            await new Promise((res) => setTimeout(res, 2000));
+            return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1, apiKeys, keyIndex + 1);
         }
+        console.log("OpenRouter response status:", response.status, currentKey);
 
         if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenRouter API error: ${errorText}`);
+            const errorText = await response.text();
+            throw new Error(`OpenRouter API error: ${errorText}`);
         }
 
         const reader = response.body?.getReader();
