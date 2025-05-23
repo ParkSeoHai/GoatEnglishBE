@@ -135,6 +135,7 @@ export async function fetchOpenRouterStream(
         throw new Error("Không tìm thấy API key hợp lệ để gọi OpenRouter.");
     }
     try {
+        prompt = "Chỉ trả lời các câu hỏi về học tiếng Anh chuyên ngành Công nghệ thông tin. Trả lời ngắn gọn, dễ hiểu. Câu hỏi: " + prompt;
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -144,20 +145,34 @@ export async function fetchOpenRouterStream(
             body: JSON.stringify({
                 model: OPENROUTER_API_MODEL,
                 stream: true,
-                messages: [{ role: "user", content: prompt }],
+                messages: [
+                    { role: "user", content: prompt }
+                ],
             }),
         });
-        if (response.status === 429 && retryCount > 0 && keyIndex + 1 < apiKeys.length) {
-            console.warn(`Rate limit exceeded for key ${keyIndex}. Trying next key in 2s...`);
+        const isRateLimited = response.status === 429;
+        const shouldRetry = retryCount > 0 && keyIndex + 1 < apiKeys.length;
+
+        if ((!response.ok || isRateLimited) && shouldRetry) {
+            console.warn(`Rate limit exceeded or request failed with status ${response.status}. Retrying with next key...`);
             await new Promise((res) => setTimeout(res, 2000));
             return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1, apiKeys, keyIndex + 1);
+        } else if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            console.error("Fetch failed:", errorData || await response.text());
+            throw new Error("OpenRouter API failed with status " + response.status);
         }
+        // if (response.status === 429 && retryCount > 0 && keyIndex + 1 < apiKeys.length) {
+        //     console.warn(`Rate limit exceeded for key ${keyIndex}. Trying next key in 2s...`);
+        //     await new Promise((res) => setTimeout(res, 2000));
+        //     return fetchOpenRouterStream(prompt, onChunk, onDone, retryCount - 1, apiKeys, keyIndex + 1);
+        // }
         console.log("OpenRouter response status:", response.status, currentKey);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`OpenRouter API error: ${errorText}`);
-        }
+        // if (!response.ok) {
+        //     const errorText = await response.text();
+        //     throw new Error(`OpenRouter API error: ${errorText}`);
+        // }
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder("utf-8");
